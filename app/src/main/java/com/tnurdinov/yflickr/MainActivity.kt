@@ -1,6 +1,7 @@
 package com.tnurdinov.yflickr
 
 import android.app.SearchManager
+import android.arch.lifecycle.ViewModelProvider
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -11,22 +12,36 @@ import android.support.v7.widget.RecyclerView
 import android.util.Log
 import android.view.Menu
 import android.widget.SearchView
+import com.tnurdinov.yflickr.viewmodel.FlickrViewModel
+import dagger.android.AndroidInjection
+import dagger.android.support.DaggerAppCompatActivity
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.util.*
+import javax.inject.Inject
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : DaggerAppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var viewAdapter: RecyclerView.Adapter<*>
     private lateinit var viewManager: RecyclerView.LayoutManager
     private lateinit var searchView: SearchView
     private lateinit var myDataset: ArrayList<String>
 
+    @Inject
+    lateinit var flickrViewModel: FlickrViewModel
+//    lateinit var flickrViewModelFactory: ViewModelProvider.AndroidViewModelFactory
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        AndroidInjection.inject(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        flickrViewModel = ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory(application)).get(
+                FlickrViewModel::class.java)
+
+
         myDataset = ArrayList()
 
         handleIntent(intent)
@@ -42,8 +57,7 @@ class MainActivity : AppCompatActivity() {
             adapter = viewAdapter
 
         }
-
-        FlickrApiService.Factory.create().recent().enqueue(object: Callback<PhotosResponse> {
+        flickrViewModel.loadRecent().enqueue(object: Callback<PhotosResponse> {
             override fun onResponse(call: Call<PhotosResponse>?, response: Response<PhotosResponse>?) {
                 myDataset.clear()
                 response?.body()?.photos?.photo?.forEach { photo -> myDataset.add("https://farm${photo.farm}.staticflickr.com/${photo.server}/${photo.id}_${photo.secret}_m.jpg") }
@@ -69,17 +83,17 @@ class MainActivity : AppCompatActivity() {
             suggestions.saveRecentQuery(searchQuery, null)
 
             Log.d("TAG search query ==>", searchQuery)
-            FlickrApiService.Factory.create().search(text = searchQuery).enqueue(object: Callback<PhotosResponse> {
-                override fun onResponse(call: Call<PhotosResponse>?, response: Response<PhotosResponse>?) {
-                    myDataset.clear()
-                    response?.body()?.photos?.photo?.forEach { photo -> myDataset.add("https://farm${photo.farm}.staticflickr.com/${photo.server}/${photo.id}_${photo.secret}_m.jpg") }
-                    viewAdapter.notifyDataSetChanged()
-                }
-
-                override fun onFailure(call: Call<PhotosResponse>?, t: Throwable?) {
-                    Log.d("TAG", t?.localizedMessage)
-                }
-            })
+//            FlickrApiService.Factory.create().search(text = searchQuery).enqueue(object: Callback<PhotosResponse> {
+//                override fun onResponse(call: Call<PhotosResponse>?, response: Response<PhotosResponse>?) {
+//                    myDataset.clear()
+//                    response?.body()?.photos?.photo?.forEach { photo -> myDataset.add("https://farm${photo.farm}.staticflickr.com/${photo.server}/${photo.id}_${photo.secret}_m.jpg") }
+//                    viewAdapter.notifyDataSetChanged()
+//                }
+//
+//                override fun onFailure(call: Call<PhotosResponse>?, t: Throwable?) {
+//                    Log.d("TAG", t?.localizedMessage)
+//                }
+//            })
 
         } else if (Intent.ACTION_VIEW == intent.action) {
             Log.d("TAG view query ==>", searchQuery)
